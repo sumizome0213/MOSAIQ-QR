@@ -11,40 +11,52 @@
 
 #include "qrcode.h"
 
-#include "esp_sleep.h"
 #include "esp_deep_sleep.h"
 
 //esp32
 GxIO_Class io(SPI, /*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16); // arbitrary selection of 17, 16
 GxEPD_Class display(io, /*RST=*/ 16, /*BUSY=*/ 4); // arbitrary selection of (16), 4
 
+#define SwitchPin 0
+
 int count = 0;
+unsigned long time;
 
 void setup() {
   Serial.begin(115200); 
   Serial.println();
   Serial.println("setup");
 
-  pinMode(22, INPUT_PULLUP);
+  pinMode(SwitchPin, INPUT_PULLUP);
 
   display.init(115200); // enable diagnostic output on Serial
 
   Serial.println("setup done");
 
-  display.fillScreen(GxEPD_WHITE);
-  display.update();
+  esp_deep_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_AUTO);
+  gpio_pullup_en(GPIO_NUM_0);    // use pullup on GPIO
+  gpio_pulldown_dis(GPIO_NUM_0); // not use pulldown on GPIO
+
+  esp_deep_sleep_enable_ext0_wakeup(GPIO_NUM_0, 0); // 指定したGPIOがLowの時に起動
+
+  drawQR("E-ink QR - " + String(count));
+  count++;
+
+  time = millis();
 
 }
 
 void loop() {
-  if(digitalRead(22) == LOW){
+  if(digitalRead(SwitchPin) == LOW){
     drawQR("E-ink QR - " + String(count));
     count++;
+    time = millis();
   }
 
-//  //LightSleep
-//  esp_sleep_enable_timer_wakeup(1000000LL * 3);
-//  esp_light_sleep_start();
+  if(millis() - time > 10*1000) {
+    Serial.println("deep sleep start");
+    esp_deep_sleep_start(); // スリープモード実行
+  }
 }
 
 void drawQR(String str) {
