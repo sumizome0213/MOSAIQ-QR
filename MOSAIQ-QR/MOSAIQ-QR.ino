@@ -12,12 +12,11 @@
 #include "qrcode.h"
 
 #include "esp_sleep.h"
+#include "esp_deep_sleep.h"
 
 //esp32
 GxIO_Class io(SPI, /*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16); // arbitrary selection of 17, 16
 GxEPD_Class display(io, /*RST=*/ 16, /*BUSY=*/ 4); // arbitrary selection of (16), 4
-
-uint64_t chipid;
 
 int count = 0;
 
@@ -25,8 +24,8 @@ void setup() {
   Serial.begin(115200); 
   Serial.println();
   Serial.println("setup");
-  
-  chipid=ESP.getEfuseMac();//The chip ID is essentially its MAC address(length: 6 bytes).
+
+  pinMode(22, INPUT_PULLUP);
 
   display.init(115200); // enable diagnostic output on Serial
 
@@ -38,15 +37,14 @@ void setup() {
 }
 
 void loop() {
-  drawQR("E-ink QR - " + String(count));
-  count++;
+  if(digitalRead(22) == LOW){
+    drawQR("E-ink QR - " + String(count));
+    count++;
+  }
 
-  Serial.printf("ESP32 Chip ID = %04X",(uint16_t)(chipid>>32));//print High 2 bytes
-  Serial.printf("%08X\n",(uint32_t)chipid);//print Low 4bytes.
-
-  //LightSleep
-  esp_sleep_enable_timer_wakeup(1000000LL * 3);
-  esp_light_sleep_start();
+//  //LightSleep
+//  esp_sleep_enable_timer_wakeup(1000000LL * 3);
+//  esp_light_sleep_start();
 }
 
 void drawQR(String str) {
@@ -73,7 +71,7 @@ void drawQR(String str) {
     }
   }
 
-  display.updateWindow(box_x, box_y, box_w, box_h, true);
-  //display.update();
+//  display.updateWindow(box_x, box_y, box_w, box_h, true);
+  display.update();
   
 }
